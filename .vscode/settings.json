@@ -4,4 +4,7 @@
         "${workspaceFolder}/src/**",
         "${workspaceFolder}/thirdparty/**",
     ],
+    "files.associations": {
+        "vector": "cpp"
+    },
 }
