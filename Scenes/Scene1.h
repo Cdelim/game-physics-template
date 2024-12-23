@@ -1,6 +1,13 @@
-#pragma once
 #include "Scene.h"
 #include <random>
+
+/*
+Authors:
+David
+Onurcan
+Selin
+Cem
+*/
 
 class Scene1 : public Scene
 {

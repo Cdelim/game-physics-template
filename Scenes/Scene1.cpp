@@ -1,12 +1,21 @@
-#include "Scene1.h"
 #include <glm/gtx/quaternion.hpp>
 #include <imgui.h>
+#include "Scene1.h"
+
+/*
+Authors:
+David
+Onurcan
+Selin
+Cem
+*/
 
 void Scene1::onDraw(Renderer& renderer) {
 
 }
 
 void Scene1::simulateStep() {
+
 }
 
 void Scene1::onGUI() {
@@ -24,8 +33,8 @@ void Scene1::init() {
     // Initial temperature field (6x6 grid)
     std::vector<std::vector<float>> T(nx, std::vector<float>(ny, 0.0f));
 
-    // Example: Set initial condition
-    T[1][3] = 100.0f;  // Heat source
+    // Set initial condition
+    T[1][3] = 100.0f;
     T[0][3] = 50.0f;
     T[0][5] = 75.0f;
 

@@ -4,6 +4,14 @@
 #include <imgui.h>
 #include <random>
 
+/*
+Authors:
+David
+Onurcan
+Selin
+Cem
+*/
+
 // Constants
 constexpr int GRID_SIZE = 16;
 constexpr float DEFAULT_DT = 0.01f;
@@ -58,39 +66,28 @@ void Scene2::simulateStep() {
 }
 
 void Scene2::onDraw(Renderer& renderer) {
-    // Draw the wireframe box
-    renderer.drawWireCube(glm::vec3(0), glm::vec3(5), glm::vec3(1));
+    // Convert the temperature grid to a 1D data vector
+    std::vector<float> data;
+    data.reserve(GRID_SIZE * GRID_SIZE);
 
-    // The size of each grid cell based on the cube size (5 units in both X and Y)
-    float cellWidth = 5.0f / GRID_SIZE;  // Grid size: 16x16
-
-
-    // Loop through the grid and draw each cell as a cube
     for (int i = 0; i < GRID_SIZE; ++i) {
         for (int j = 0; j < GRID_SIZE; ++j) {
-            // The temperature at the current grid cell
-            float temperature = temperatureGrid[i][j];
-
-            // Color based on the temperature (simple heatmap effect)
-            glm::vec4 color = glm::vec4(temperature, 0.0f, 1.0f - temperature, 1.0f);
-
-            // Calculate the position of each cell in the grid, scaling to fit the cube
-            glm::vec3 position = glm::vec3(i * cellWidth - 2.5f, j * cellWidth - 2.5f, 0.0f); // Centered in the 5x5 box
-
-            // The size of each cell (cellWidth by cellWidth in X and Y, unit size in Z)
-            glm::vec3 size = glm::vec3(cellWidth, cellWidth, 1.0f);
-
-            // Rotation is identity (no rotation for the grid cells)
-            glm::quat rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-            // Optionally, you can use flags for specific behaviors (e.g., no lighting)
-            uint32_t flags = 0;
-
-            // Draw each cube (grid cell) using instancing
-            renderer.drawCube(position, rotation, size, color, flags);
+            // Assume temperature values are already normalized between 0 and 1
+            data.push_back(temperatureGrid[i][j]);
         }
     }
+
+    // Set up the colormap (e.g., use "viridis" or any other supported colormap)
+    Colormap colormap("hot");
+
+    // Define the screen position and size for rendering the heatmap
+    glm::vec2 screenPosition(0.0f, 0.0f); // Bottom-left corner of the screen
+    glm::vec2 screenSize(1.0f, 1.0f);
+
+    // Draw the temperature heatmap using the 2D image renderer
+    renderer.drawImage(data, GRID_SIZE, GRID_SIZE, colormap, screenPosition, screenSize);
 }
+
 
 
 

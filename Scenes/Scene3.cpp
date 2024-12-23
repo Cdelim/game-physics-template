@@ -7,15 +7,21 @@
 #include "src/util/pcgsolver.h"
 
 /*
+Authors:
+David
+Onurcan
+Selin
+Cem
+*/
 
 void Scene3::init() {
     gridWidth = 16;
     gridHeight = 16;
     domainSize = glm::vec2(1.0f, 1.0f);
-    dx = domainSize.x / gridWidth;
-    dy = domainSize.y / gridHeight;
-    dt = 0.01f;
-    diffusivity = 0.1f;
+    dx = domainSize[0] / gridWidth;
+    dy = domainSize[1] / gridHeight;
+    dt = 0.001f;
+    diffusivity = 0.01f;
 
     // Initialize temperature grid with random noise
     temperature.assign(gridWidth * gridHeight, 0.0f);
@@ -52,27 +58,36 @@ void Scene3::simulateStep() {
 }
 
 void Scene3::onDraw(Renderer& renderer) {
-    glm::vec3 boxScale(5.0f, 5.0f, 1.0f);
-    renderer.drawWireCube(glm::vec3(0), boxScale);
+    // Define the colormap to use for visualization
+    Colormap colormap("hot"); // Change to your desired colormap, e.g., "hot", "plasma"
 
-    // Draw temperature field
-    for (int i = 0; i < gridWidth; ++i) {
-        for (int j = 0; j < gridHeight; ++j) {
-            float value = temperature[i + j * gridWidth];
-            glm::vec4 color(value, 0.0f, 1.0f - value, 1.0f); // Gradient from blue to red
-            glm::vec3 position = glm::vec3(
-                -2.5f + i * dx * boxScale.x,
-                -2.5f + j * dy * boxScale.y,
-                0.0f
-            );
-            renderer.drawCube(position, glm::quat(), glm::vec3(dx, dy, 0.1f), color);
-        }
+    // Screen position and size for the 2D heat map
+    glm::vec2 screenPosition(0.0f, 0.0f); // Bottom-left corner of the screen
+    glm::vec2 screenSize(1.0f, 1.0f);     // Size of the heatmap (normalized device coordinates)
+
+    // Ensure temperature data is normalized to [0, 1] for colormap application
+    float minTemp = *std::min_element(temperature.begin(), temperature.end());
+    float maxTemp = *std::max_element(temperature.begin(), temperature.end());
+    float tempRange = (maxTemp - minTemp) > 0.0f ? (maxTemp - minTemp) : 1.0f;
+
+    // Normalize the temperature values and prepare the data for rendering
+    std::vector<float> normalizedTemperature(temperature.size());
+    for (size_t idx = 0; idx < temperature.size(); ++idx) {
+        normalizedTemperature[idx] = (temperature[idx] - minTemp) / tempRange;
     }
+
+    // Use the Renderer to draw the heat map
+    renderer.drawImage(normalizedTemperature, gridHeight, gridWidth, colormap, screenPosition, screenSize);
 }
 
+
 void Scene3::onGUI() {
-    ImGui::SliderFloat("Time Step (dt)", &dt, 0.001f, 0.1f);
-    ImGui::SliderFloat("Diffusivity", &diffusivity, 0.01f, 1.0f);
+    auto first = ImGui::SliderFloat("Time Step (dt)", &dt, 0.001f, 0.1f);
+    auto second = ImGui::SliderFloat("Diffusivity", &diffusivity, 0.01f, 1.0f);
+
+    if (first || second) {
+        assembleMatrix();
+    }
 }
 
 void Scene3::assembleMatrix() {
@@ -91,7 +106,7 @@ void Scene3::assembleMatrix() {
             }
 
             // Interior points
-            float coef = diffusivity * dt / (dx * dx);
+            float coef = (diffusivity * dt * ImGui::GetIO().DeltaTime) / (dx * dx);
             matrix.set_element(idx, idx, 1.0f + 4.0f * coef);        // T[i, j]
             matrix.set_element(idx, idx - 1, -coef);                // T[i-1, j]
             matrix.set_element(idx, idx + 1, -coef);                // T[i+1, j]
@@ -121,4 +136,3 @@ std::vector<float> Scene3::assembleRHS() const {
     }
     return rhs;
 }
-*/
