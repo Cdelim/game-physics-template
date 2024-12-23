@@ -1,99 +1,49 @@
 #include "Scene1.h"
+#include <glm/gtx/quaternion.hpp>
+#include <imgui.h>
 
-void Scene1::init(){
-    glm::quat initialOrientation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    RigidBodyBox box(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.6f, 0.4f), 2.0f, initialOrientation);
+void Scene1::onDraw(Renderer& renderer) {
 
-    box.applyForce(glm::vec3(1.0f, 1.0f, 0.0f), glm::vec3(0.3f, 0.5f, 0.25f));
-    box.integrate(2);
-    box.clearForces();
-
-    box.printState();
-    box.printWorldPositionAndVelocity(glm::vec3(-0.3f, -0.5f, -0.25f));
 }
 
-RigidBodyBox::RigidBodyBox()
-    : position(0.0f), velocity(0.0f), force(0.0f), 
-      orientation(glm::quat(0.0f, 0.0f, 0.0f, 0.0f)), 
-      angularVelocity(0.0f), angularMomentum(0.0f),
-      torque(0.0f), mass(0.0f),
-      inverseInertiaTensor(glm::mat3(0.0f)), 
-      dimensions(0.0f, 0.0f, 0.0f) {
+void Scene1::simulateStep() {
 }
 
-RigidBodyBox::RigidBodyBox(const glm::vec3& pos, const glm::vec3& dims, float mass, const glm::quat& initialOrientation)
-    : name("box"), position(pos), velocity(0.0f), force(0.0f),
-      orientation(initialOrientation),
-      angularVelocity(0.0f), angularMomentum(0.0f), torque(0.0f), mass(mass),
-      dimensions(dims) {
+void Scene1::onGUI() {
 
-    float w2 = dims.x * dims.x;
-    float h2 = dims.y * dims.y;
-    float d2 = dims.z * dims.z;
-    inverseInertiaTensor = glm::inverse(
-        glm::mat3(
-            (1.0f / 12.0f) * mass * (h2 + d2), 0, 0,
-            0, (1.0f / 12.0f) * mass * (w2 + d2), 0,
-            0, 0, (1.0f / 12.0f) * mass * (w2 + h2)
-        )
-    );
 }
 
-RigidBodyBox::RigidBodyBox(const std::string &name, const glm::vec3& pos, const glm::vec3& dims, float mass, const glm::quat& initialOrientation)
-    : name(name), position(pos), velocity(0.0f), force(0.0f),
-      orientation(initialOrientation),
-      angularVelocity(0.0f), angularMomentum(0.0f), torque(0.0f), mass(mass),
-      dimensions(dims) {
+void Scene1::init() {
+    constexpr int nx = 6;  // Number of grid points in x
+    constexpr int ny = 6;  // Number of grid points in y
+    constexpr float dx = 1.0f;  // Grid spacing in x
+    constexpr float dy = 1.0f;  // Grid spacing in y
+    constexpr float alpha = 0.01f;  // Diffusivity
+    constexpr float dt = 0.1f;  // Time step
 
-    float w2 = dims.x * dims.x;
-    float h2 = dims.y * dims.y;
-    float d2 = dims.z * dims.z;
-    inverseInertiaTensor = glm::inverse(
-        glm::mat3(
-            (1.0f / 12.0f) * mass * (h2 + d2), 0, 0,
-            0, (1.0f / 12.0f) * mass * (w2 + d2), 0,
-            0, 0, (1.0f / 12.0f) * mass * (w2 + h2)
-        )
-    );
-}
+    // Initial temperature field (6x6 grid)
+    std::vector<std::vector<float>> T(nx, std::vector<float>(ny, 0.0f));
 
-void RigidBodyBox::clearForces() {
-    force = glm::vec3(0.0f);
-    torque = glm::vec3(0.0f);
-}
+    // Example: Set initial condition
+    T[1][3] = 100.0f;  // Heat source
+    T[0][3] = 50.0f;
+    T[0][5] = 75.0f;
 
-void RigidBodyBox::applyForce(const glm::vec3& f, const glm::vec3& point) {
-    force += f;
-    glm::vec3 bodySpacePoint = point - position; 
-    torque += glm::cross(bodySpacePoint, f);
-}
+    // Next temperature field
+    std::vector<std::vector<float>> T_next = T;
 
-void RigidBodyBox::integrate(float dt) {
-    // Euler Step 
-    position += velocity * dt;
-    velocity += dt * force / mass;
+    // Explicit Euler update for one time step
+    for (int i = 1; i < nx - 1; ++i) {
+        for (int j = 1; j < ny - 1; ++j) {
+            float d2T_dx2 = (T[i + 1][j] - 2.0f * T[i][j] + T[i - 1][j]) / (dx * dx);
+            float d2T_dy2 = (T[i][j + 1] - 2.0f * T[i][j] + T[i][j - 1]) / (dy * dy);
 
-    glm::quat angularVelocityQuat(0.0f, angularVelocity.x, angularVelocity.y, angularVelocity.z);
-    orientation += 0.5f * dt * angularVelocityQuat * orientation;
-    orientation = glm::normalize(orientation); 
+            T_next[i][j] = T[i][j] + dt * alpha * (d2T_dx2 + d2T_dy2);
+        }
+    }
 
-  
-    angularMomentum += dt * torque;
-    glm::mat3 worldSpaceInertiaTensor = glm::mat3_cast(orientation) * inverseInertiaTensor * glm::transpose(glm::mat3_cast(orientation));
-    angularVelocity = worldSpaceInertiaTensor * angularMomentum;
-}
-
-void RigidBodyBox::printState(){
-    std::cout << "Mass Point Position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
-    std::cout << "Linear Velocity: " << velocity.x << ", " << velocity.y << ", " << velocity.z << std::endl;
-    std::cout << "Angular Velocity: " << angularVelocity.x << ", " << angularVelocity.y << ", " << angularVelocity.z << std::endl;
-    glm::vec3 euler = glm::eulerAngles(orientation);
-    std::cout << "Orientation (Euler): " << glm::degrees(euler.x) << ", " << glm::degrees(euler.y) << ", " << glm::degrees(euler.z) << std::endl;
-}
-
-void RigidBodyBox::printWorldPositionAndVelocity(glm::vec3 bodySpacepoint){
-    glm::vec3 worldSpacePosition = position + glm::mat3_cast(orientation) * bodySpacepoint;
-    glm::vec3 worldSpaceVelocity = velocity + glm::cross(angularVelocity, bodySpacepoint);
-    std::cout << "World Space Position: " << worldSpacePosition.x << ", " << worldSpacePosition.y << ", " << worldSpacePosition.z << std::endl;
-    std::cout << "World Space Velocity: " << worldSpaceVelocity.x << ", " << worldSpaceVelocity.y << ", " << worldSpaceVelocity.z << std::endl;
+    // Print the computed values
+    std::cout << "T[1][3]: " << T_next[1][3] << std::endl;
+    std::cout << "T[0][3]: " << T_next[0][3] << std::endl;
+    std::cout << "T[0][5]: " << T_next[0][5] << std::endl;
 }
